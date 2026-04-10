@@ -1,0 +1,36 @@
+import express from "express";
+import authRouter from "./routes/auth.routes.js";
+import cookieParser from "cookie-parser";
+import accountRouter from "./routes/account.routes.js"; 
+import transactionRoutes from "./routes/transaction.routes.js";
+
+const app=express();
+
+
+app.use(express.json());
+app.use(cookieParser());
+
+
+app.use("/api/auth",authRouter);
+app.use("/api/accounts",accountRouter);
+app.use("/api/transactions",transactionRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found"
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err);
+
+  res.status(err.statusCode || 500).json({
+    success: false,
+    message: process.env.NODE_ENV === "production"
+      ? "Internal Server Error"
+      : err.message
+  });
+});
+
+export default app;
