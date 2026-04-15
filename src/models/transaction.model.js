@@ -1,41 +1,59 @@
 import mongoose from "mongoose";
 
-const transactionSchema=new mongoose.Schema({
-  fromAccount:{
-    type:mongoose.Schema.Types.ObjectId,
-    ref:"account",
-    required:[true,"Transaction must have a source account"],
-    index:true
+const transactionSchema = new mongoose.Schema({
+  fromAccount: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "account",
+    required: true,
+    index: true
   },
-  toAccount:{
-    type:mongoose.Schema.Types.ObjectId,
-    ref:"account",
-    required:[true,"Transaction must have a destination account"],    
-    index:true
+  toAccount: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "account",
+    required: true,
+    index: true
   },
-  status:{
-    type:String,
-    enum:{
-      values:["PENDING","COMPLETED","FAILED","REVERSED"],
-      message:"Status must be either PENDING, COMPLETED ,FAILED or REVERSED",
+  status: {
+    type: String,
+    enum: {
+      values: ["PENDING", "COMPLETED", "FAILED", "REVERSED"],
+      message: "Invalid status"
     },
-    default:"PENDING"
+    default: "PENDING"
   },
-  amount:{
-    type:Number,
-    required:[true,"Transaction amount is required"],
+  amount: {
+    type: Number,
+    required: true,
     min: [1, "Transaction amount must be greater than 0"]
   },
-  idempotencyKey:{
-    type:String,
-    required:[true,"Idempotency key is required"],
-    unique:true,
-    index:true
+  idempotencyKey: {
+    type: String,
+    required: true
+  },
+  note: {
+    type: String
   }
-},{
-  timestamps:true
-})
+}, {
+  timestamps: true
+});
 
-const transactionModel=mongoose.model("transaction",transactionSchema);
+// prevent self-transfer
+transactionSchema.pre("validate", function (next) {
+  if (this.fromAccount.equals(this.toAccount)) {
+    return next(new Error("Cannot transfer to same account"));
+  }
+  next();
+});
+
+// indexes
+transactionSchema.index({ fromAccount: 1 });
+transactionSchema.index({ toAccount: 1 });
+transactionSchema.index({ fromAccount: 1, status: 1 });
+transactionSchema.index(
+  { idempotencyKey: 1, fromAccount: 1 },
+  { unique: true }
+);
+
+const transactionModel = mongoose.model("transaction", transactionSchema);
 
 export default transactionModel;

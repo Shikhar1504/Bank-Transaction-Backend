@@ -5,26 +5,27 @@ async function createAccountController(req, res) {
   try {
     const user = req.user;
 
-    const existing = await accountModel.findOne({ user: user._id });
-    if (existing) {
-      return res.status(409).json({
-        success: false,
-        message: "Account already exists"
-      });
-    }
-
     const account = await accountModel.create({
       user: user._id
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       account
     });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+
+    // ✅ handle duplicate account (unique index)
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Account already exists"
+      });
+    }
+
+    return res.status(500).json({
       success: false,
       message: "Internal Server Error"
     });
@@ -35,16 +36,17 @@ async function getUserAccountsController(req, res) {
   try {
     const accounts = await accountModel
       .find({ user: req.user._id })
+      .select("_id status currency balance createdAt")
       .lean();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       accounts
     });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Internal Server Error"
     });
@@ -74,9 +76,10 @@ async function getAccountBalanceController(req, res) {
       });
     }
 
-    const balance = await account.getBalance();
+    // ✅ direct balance (no function needed)
+    const balance = account.balance;
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       accountId: account._id,
       balance
@@ -84,7 +87,7 @@ async function getAccountBalanceController(req, res) {
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Internal Server Error"
     });
