@@ -167,6 +167,74 @@ Content-Type: application/json
 - Double-entry ledger: every movement is mirrored as DEBIT and CREDIT.
 - Atomic transactions: all writes commit together or all roll back.
 
+## 🧠 System Design Concepts Used
+
+### Atomic Transactions
+
+- Explanation: Multiple related writes are treated as one all-or-nothing unit.
+- In this project: Transfer execution wraps transaction record creation, balance updates, and ledger inserts inside MongoDB session transactions.
+- Why it matters: Prevents partial commits where money moves but history or status does not, which is critical for financial correctness.
+
+### Idempotency
+
+- Explanation: Repeating the same request produces the same outcome instead of duplicate side effects.
+- In this project: Transfers accept an idempotency key and enforce uniqueness per sender, returning existing results on safe retries.
+- Why it matters: Network retries and client timeouts do not cause double charges.
+
+### Double-Entry Ledger System
+
+- Explanation: Every value transfer is recorded as equal and opposite entries.
+- In this project: Each completed transfer writes one DEBIT and one CREDIT ledger row linked to the same business transaction.
+- Why it matters: Preserves accounting integrity and simplifies reconciliation.
+
+### Source of Truth Pattern
+
+- Explanation: One canonical field is used for real-time operational decisions.
+- In this project: Account balance is the spendable source of truth; ledger is the immutable audit layer.
+- Why it matters: Reads stay fast and deterministic while auditability remains intact.
+
+### Race Condition Handling
+
+- Explanation: Concurrent requests are controlled so shared state cannot be corrupted.
+- In this project: Sender debit uses guarded atomic updates with sufficient-funds checks in the same write path, plus transaction boundaries.
+- Why it matters: Prevents overdrafts and inconsistent balances under high concurrency.
+
+### Immutable Data Pattern
+
+- Explanation: Historical records are append-only and cannot be edited after creation.
+- In this project: Ledger entries are written once and protected from mutation/deletion to preserve financial history.
+- Why it matters: Enables reliable forensics, compliance checks, and dispute investigation.
+
+### Indexing Strategy
+
+- Explanation: Query-critical fields are indexed to keep latency stable as data grows.
+- In this project: Unique indexes enforce one-account-per-user and idempotency constraints; lookup-heavy paths use indexed identifiers.
+- Why it matters: Protects correctness constraints and avoids performance degradation at scale.
+
+### Pagination for Scalability
+
+- Explanation: Large result sets are retrieved in bounded chunks.
+- In this project: Transaction history endpoints expose page and limit controls for account-level reads.
+- Why it matters: Prevents heavy scans, reduces payload size, and keeps API response times predictable.
+
+### Authentication & Authorization
+
+- Explanation: Identity verification is separated from permission checks.
+- In this project: JWT-based auth protects routes, with ownership checks and role guards for privileged system operations.
+- Why it matters: Reduces unauthorized access risk and enforces least privilege.
+
+### Token Blacklisting
+
+- Explanation: Stateless tokens can be explicitly revoked before natural expiry.
+- In this project: Logout stores token identifiers in a blacklist with TTL so revoked sessions are denied immediately.
+- Why it matters: Closes post-logout replay windows and improves session security.
+
+### Rate Limiting
+
+- Explanation: Request throughput is capped per client to control abuse.
+- In this project: Middleware throttles repeated calls on protected endpoints.
+- Why it matters: Improves resilience against brute force and traffic spikes while preserving service availability.
+
 ## 🚀 Run Locally
 
 ```bash
