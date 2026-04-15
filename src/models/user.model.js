@@ -33,20 +33,18 @@ const userSchema=new mongoose.Schema({
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
   delete user.password;
+  delete user.systemUser;
   return user;
 };
 
-userSchema.pre("save", async function(){
-  if(!this.isModified("password")) return 
-
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 10);
-
-  return 
 });
 
-userSchema.methods.comparePassword=async function(enteredPassword){
-  return await bcrypt.compare(enteredPassword,this.password);
-}
+userSchema.methods.comparePassword = function (enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
+};
 
 const userModel=mongoose.model("user",userSchema);
 
