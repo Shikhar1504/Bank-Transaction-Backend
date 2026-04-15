@@ -1,46 +1,98 @@
 import accountModel from "../models/account.model.js";
+import mongoose from "mongoose";
 
-async function createAccountController(req,res) {
-  const user=req.user;
+async function createAccountController(req, res) {
+  try {
+    const user = req.user;
 
-  const account=await accountModel.create({
-    user:user._id
-  })
-  res.status(201).json({
-    success:true,
-    account
-  })
-}
+    const existing = await accountModel.findOne({ user: user._id });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Account already exists"
+      });
+    }
 
-async function getUserAccountsController(req,res) {
+    const account = await accountModel.create({
+      user: user._id
+    });
 
-  const accounts=await accountModel.find({user:req.user._id});
+    res.status(201).json({
+      success: true,
+      account
+    });
 
-  res.status(200).json({
-    success:true,
-    accounts
-  })
-
-}
-
-async function getAccountBalanceController(req,res) {
-  const {accountId}=req.params;
-
-  const account=await accountModel.findOne({_id:accountId,user:req.user._id});
-
-  if(!account) {
-    return res.status(404).json({
-      success:false,
-      message:"Account not found"
-    })
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
   }
-
-  const balance=await account.getBalance();
-  res.status(200).json({
-    success:true,
-    accountId:account._id,
-    balance:balance
-  })
 }
 
-export {createAccountController,getUserAccountsController,getAccountBalanceController}
+async function getUserAccountsController(req, res) {
+  try {
+    const accounts = await accountModel
+      .find({ user: req.user._id })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      accounts
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
+}
+
+async function getAccountBalanceController(req, res) {
+  try {
+    const { accountId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(accountId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid accountId"
+      });
+    }
+
+    const account = await accountModel.findOne({
+      _id: accountId,
+      user: req.user._id
+    });
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found"
+      });
+    }
+
+    const balance = await account.getBalance();
+
+    res.status(200).json({
+      success: true,
+      accountId: account._id,
+      balance
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
+}
+
+export {
+  createAccountController,
+  getUserAccountsController,
+  getAccountBalanceController
+};
