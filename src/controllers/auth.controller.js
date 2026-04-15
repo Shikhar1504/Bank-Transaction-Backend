@@ -1,5 +1,6 @@
 import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
+import tokenBlacklistModel from "../models/blacklist.model.js";
 
 async function userRegisterController(req,res){
   try {
@@ -113,4 +114,26 @@ async function userLoginController(req,res){
   }
 }
 
-export {userRegisterController,userLoginController};
+async function userLogoutController(req,res){
+  const token=req.cookies.token|| req.headers.authorization?.split(" ")[1];
+
+  if(!token){
+    return res.status(200).json({
+      success:true,
+      message:"User logged out successfully"
+    })
+  }
+
+  res.cookie("token", "")
+
+  await tokenBlacklistModel.create({token:token});
+
+  res.clearCookie("token");
+
+  return res.status(200).json({
+    success:true,
+    message:"User logged out successfully"
+  })
+}
+
+export {userRegisterController,userLoginController,userLogoutController};

@@ -73,26 +73,44 @@ async function createTransaction(req,res) {
     })
   }
 
+  let transaction;
+
+  try{
+
   const session=await mongoose.startSession();
 
   session.startTransaction();
 
-  const transaction=await transactionModel.create({fromAccount,toAccount,amount,idempotencyKey,status:"PENDING"},{session});
+  transaction=(await transactionModel.create([{fromAccount,toAccount,amount,idempotencyKey,status:"PENDING"}],{session}))[0];
 
-  const debitLedgerEntry=await ledgerModel.create({account:fromAccount,type:"DEBIT",amount,transaction:transaction._id},{session});
+  const debitLedgerEntry=await ledgerModel.create([{account:fromAccount,type:"DEBIT",amount,transaction:transaction._id}],{session});
 
-  const creditLedgerEntry=await ledgerModel.create({account:toAccount,type:"CREDIT",amount,transaction:transaction._id},{session});
+  await (()=>{
+    return new Promise((resolve)=> setTimeout(resolve,15*1000))
+  })()
 
-  transaction.status="COMPLETED";
-  await transaction.save({session});
+  const creditLedgerEntry=await ledgerModel.create([{account:toAccount,type:"CREDIT",amount,transaction:transaction._id}],{session});
+
+  await transactionModel.findOneAndUpdate({_id:transaction._id},{status:"COMPLETED"},{session});
+
+  // transaction.status="COMPLETED";
+  // await transaction.save({session});
 
   await session.commitTransaction();
   session.endSession();
 
+}catch(error){
+  return res.status(400).json({
+    success:false,
+    message:"Transaction is Pending due to some issues. Retry after some time",
+    error:error.message
+  })
+}
+
   return res.status(201).json({
     success:true,
     message:"Transaction completed successfully",
-    transaction
+    transaction   
   })
 }
 

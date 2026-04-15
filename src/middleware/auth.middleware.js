@@ -1,5 +1,6 @@
 import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
+import tokenBlacklistModel from "../models/blacklist.model.js";
 
 async function authMiddleware(req,res,next) {
   let token;
@@ -14,6 +15,14 @@ if (req.cookies.token) {
     return res.status(401).json({
       success:false,
       message:"Unauthorized"
+    })
+  }
+
+  const isBlacklisted=await tokenBlacklistModel.findOne({token});
+  if(isBlacklisted){
+    return res.status(401).json({
+      success:false,
+      message:"Token is blacklisted"
     })
   }
 
@@ -57,6 +66,14 @@ if (req.cookies.token) {
     return res.status(401).json({
       success:false,
       message:"Unauthorized"
+    })
+  }
+
+  const isBlacklisted=await tokenBlacklistModel.findOne({token});
+  if(isBlacklisted){
+    return res.status(401).json({
+      success:false,
+      message:"Token is blacklisted"  
     })
   }
 
