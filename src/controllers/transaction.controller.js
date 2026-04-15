@@ -297,4 +297,68 @@ async function createInitialFundsTransaction(req, res) {
   }
 }
 
-export { createTransaction, createInitialFundsTransaction };
+async function getTransactionHistoryController(req, res) {
+  try {
+    const { accountId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(accountId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid accountId"
+      });
+    }
+
+    // ✅ ownership check
+    const account = await accountModel.findOne({
+      _id: accountId,
+      user: req.user._id
+    });
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found"
+      });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+const limit = parseInt(req.query.limit) || 10;
+const skip = (page - 1) * limit;
+
+const transactions = await ledgerModel
+  .find({ account: accountId })
+  .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit)
+  .populate({
+    path: "transaction",
+    select: "note amount status createdAt"
+  })
+  .lean();
+
+// ✅ ADD HERE
+const formatted = transactions.map(tx => ({
+  ...tx,
+  direction: tx.type === "DEBIT" ? "OUT" : "IN"
+}));
+
+const total = await ledgerModel.countDocuments({ account: accountId });
+
+return res.status(200).json({
+  success: true,
+  page,
+  limit,
+  total,
+  transactions: formatted // ✅ use formatted
+});
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
+}
+
+export { createTransaction, createInitialFundsTransaction,getTransactionHistoryController };
