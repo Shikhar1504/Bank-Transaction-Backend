@@ -2,138 +2,153 @@ import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import tokenBlacklistModel from "../models/blacklist.model.js";
 
-async function userRegisterController(req,res){
-  try {
-    const {email,name,password}=req.body;
-
-    if(!email || !name || !password){
-  return res.status(400).json({
-    success:false,
-    message:"All fields are required"
-  })
+function extractToken(req) {
+  if (req.cookies.token) return req.cookies.token;
+  if (req.headers.authorization?.startsWith("Bearer ")) {
+    return req.headers.authorization.split(" ")[1];
+  }
+  return null;
 }
 
-    const isExists=await userModel.findOne({email});
-    if(isExists){
-      return res.status(409).json({
-        success:false,
-        message:"Email already exists"
-      })
+async function userRegisterController(req, res) {
+  try {
+    const { email, name, password } = req.body;
+
+    if (!email || !name || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required"
+      });
     }
 
-    const user=await userModel.create({ email, name, password });
+    const isExists = await userModel.findOne({ email });
+    if (isExists) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already exists"
+      });
+    }
 
-    const token=jwt.sign(
-      {userId:user._id},
+    const user = await userModel.create({ email, name, password });
+
+    const token = jwt.sign(
+      { userId: user._id },
       process.env.JWT_SECRET,
-      {expiresIn:"3d"}
+      { expiresIn: "3d" }
     );
 
     res.cookie("token", token, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict"
-});
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict"
+    });
 
     res.status(201).json({
-      success:true,
-      user:{
-        _id:user._id,
-        email:user.email,
-        name:user.name
-      },
-      token
+      success: true,
+      user
     });
 
   } catch (error) {
     console.error(error);
-    if(error.code === 11000){
-  return res.status(400).json({
-    success:false,
-    message:"Email already exists"
-  });
-}
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already exists"
+      });
+    }
 
     res.status(500).json({
-      success:false,
-      message:"Internal Server Error"
+      success: false,
+      message: "Internal Server Error"
     });
   }
 }
 
-async function userLoginController(req,res){
+async function userLoginController(req, res) {
   try {
-    const {email,password}=req.body;
+    const { email, password } = req.body;
 
-    if(!email || !password){
-  return res.status(400).json({
-    success:false,
-    message:"Email and password are required"
-  });
-}
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required"
+      });
+    }
 
-  const user=await userModel.findOne({email}).select("+password");
-  if(!user){
-    return res.status(401).json({
-      success:false,
-      message:"Invalid email or password"
-    })
-  }
+    const user = await userModel.findOne({ email }).select("+password");
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
+      });
+    }
 
-  const isValidPassword=await user.comparePassword(password);
-  if(!isValidPassword){
-    return res.status(401).json({
-      success:false,
-      message:"Invalid email or password"
-    })
-  }
+    const isValidPassword = await user.comparePassword(password);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
+      });
+    }
 
-  const token=jwt.sign({userId:user._id},process.env.JWT_SECRET,{expiresIn:"3d"});
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "3d" }
+    );
 
-  res.cookie("token", token, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict"
-});
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict"
+    });
 
-  res.status(200).json({
-    success:true,
-    user:{
-      _id:user._id,
-      email:user.email,
-      name:user.name
-    },
-    token
-  })
+    res.status(200).json({
+      success: true,
+      user
+    });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      success:false,
-      message:"Internal Server Error"
+      success: false,
+      message: "Internal Server Error"
     });
   }
 }
 
-async function userLogoutController(req,res){
-  const token=req.cookies.token|| req.headers.authorization?.split(" ")[1];
+async function userLogoutController(req, res) {
+  try {
+    const token = extractToken(req);
 
-  if(!token){
+    if (!token) {
+      return res.status(200).json({
+        success: true,
+        message: "User logged out successfully"
+      });
+    }
+
+    await tokenBlacklistModel.create({ token });
+
+    res.clearCookie("token");
+
     return res.status(200).json({
-      success:true,
-      message:"User logged out successfully"
-    })
+      success: true,
+      message: "User logged out successfully"
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
   }
-
-  res.cookie("token", "")
-
-  await tokenBlacklistModel.create({token:token});
-
-  res.clearCookie("token");
-
-  return res.status(200).json({
-    success:true,
-    message:"User logged out successfully"
-  })
 }
 
-export {userRegisterController,userLoginController,userLogoutController};
+export {
+  userRegisterController,
+  userLoginController,
+  userLogoutController
+};
