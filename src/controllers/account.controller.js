@@ -6,14 +6,13 @@ async function createAccountController(req, res) {
     const user = req.user;
 
     const account = await accountModel.create({
-      user: user._id
+      user: user._id,
     });
 
     return res.status(201).json({
       success: true,
-      account
+      account,
     });
-
   } catch (error) {
     console.error(error);
 
@@ -21,13 +20,13 @@ async function createAccountController(req, res) {
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: "Account already exists"
+        message: "Account already exists",
       });
     }
 
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 }
@@ -41,14 +40,13 @@ async function getUserAccountsController(req, res) {
 
     return res.status(200).json({
       success: true,
-      accounts
+      accounts,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 }
@@ -60,19 +58,19 @@ async function getAccountBalanceController(req, res) {
     if (!mongoose.Types.ObjectId.isValid(accountId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid accountId"
+        message: "Invalid accountId",
       });
     }
 
     const account = await accountModel.findOne({
       _id: accountId,
-      user: req.user._id
+      user: req.user._id,
     });
 
     if (!account) {
       return res.status(404).json({
         success: false,
-        message: "Account not found"
+        message: "Account not found",
       });
     }
 
@@ -82,14 +80,13 @@ async function getAccountBalanceController(req, res) {
     return res.status(200).json({
       success: true,
       accountId: account._id,
-      balance
+      balance,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 }
@@ -97,5 +94,5 @@ async function getAccountBalanceController(req, res) {
 export {
   createAccountController,
   getUserAccountsController,
-  getAccountBalanceController
+  getAccountBalanceController,
 };

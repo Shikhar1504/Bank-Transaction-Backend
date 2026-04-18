@@ -1,41 +1,54 @@
 import mongoose from "mongoose";
 
-const transactionSchema = new mongoose.Schema({
-  fromAccount: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "account",
-    required: true,
-    index: true
-  },
-  toAccount: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "account",
-    required: true,
-    index: true
-  },
-  status: {
-    type: String,
-    enum: {
-      values: ["PENDING", "COMPLETED", "FAILED", "REVERSED"],
-      message: "Invalid status"
+const transactionSchema = new mongoose.Schema(
+  {
+    fromAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "account",
+      required: true,
+      index: true,
     },
-    default: "PENDING"
+    toAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "account",
+      required: true,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: {
+        values: ["INITIATED", "PROCESSING", "COMPLETED", "FAILED"],
+        message: "Invalid status",
+      },
+      default: "INITIATED",
+    },
+
+    retryCount: {
+      type: Number,
+      default: 0,
+    },
+
+    failureReason: {
+      type: String,
+      default: null,
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: [1, "Transaction amount must be greater than 0"],
+    },
+    idempotencyKey: {
+      type: String,
+      required: true,
+    },
+    note: {
+      type: String,
+    },
   },
-  amount: {
-    type: Number,
-    required: true,
-    min: [1, "Transaction amount must be greater than 0"]
+  {
+    timestamps: true,
   },
-  idempotencyKey: {
-    type: String,
-    required: true
-  },
-  note: {
-    type: String
-  }
-}, {
-  timestamps: true
-});
+);
 
 // prevent self-transfer
 transactionSchema.pre("validate", function (next) {
@@ -51,7 +64,7 @@ transactionSchema.index({ toAccount: 1 });
 transactionSchema.index({ fromAccount: 1, status: 1 });
 transactionSchema.index(
   { idempotencyKey: 1, fromAccount: 1 },
-  { unique: true }
+  { unique: true },
 );
 
 const transactionModel = mongoose.model("transaction", transactionSchema);
