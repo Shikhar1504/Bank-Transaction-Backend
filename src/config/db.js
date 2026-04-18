@@ -17,7 +17,6 @@ async function connectDB() {
     mongoose.connection.on("reconnected", () => {
       console.log("MongoDB reconnected");
     });
-
   } catch (err) {
     console.error("Error connecting to MongoDB:", err);
     process.exit(1);

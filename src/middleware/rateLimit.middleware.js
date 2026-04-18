@@ -8,8 +8,8 @@ export const apiLimiter = rateLimit({
   legacyHeaders: false,
   message: {
     success: false,
-    message: "Too many requests, please try again later"
-  }
+    message: "Too many requests, please try again later",
+  },
 });
 
 // 🔐 Strict limiter (for sensitive routes)
@@ -18,6 +18,6 @@ export const strictLimiter = rateLimit({
   max: 10, // only 10 requests
   message: {
     success: false,
-    message: "Too many attempts, please slow down"
-  }
+    message: "Too many attempts, please slow down",
+  },
 });

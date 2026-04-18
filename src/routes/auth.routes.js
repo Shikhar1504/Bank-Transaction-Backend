@@ -2,7 +2,7 @@ import express from "express";
 import {
   userRegisterController,
   userLoginController,
-  userLogoutController
+  userLogoutController,
 } from "../controllers/auth.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { strictLimiter } from "../middleware/rateLimit.middleware.js";

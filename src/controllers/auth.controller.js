@@ -17,7 +17,7 @@ async function userRegisterController(req, res) {
     if (!email || !name || !password) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required"
+        message: "All fields are required",
       });
     }
 
@@ -25,42 +25,39 @@ async function userRegisterController(req, res) {
     if (isExists) {
       return res.status(409).json({
         success: false,
-        message: "Email already exists"
+        message: "Email already exists",
       });
     }
 
     const user = await userModel.create({ email, name, password });
 
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "3d" }
-    );
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "3d",
+    });
 
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict"
+      sameSite: "strict",
     });
 
     res.status(201).json({
       success: true,
-      user
+      user,
     });
-
   } catch (error) {
     console.error(error);
 
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: "Email already exists"
+        message: "Email already exists",
       });
     }
 
     res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 }
@@ -72,7 +69,7 @@ async function userLoginController(req, res) {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required"
+        message: "Email and password are required",
       });
     }
 
@@ -80,7 +77,7 @@ async function userLoginController(req, res) {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid email or password",
       });
     }
 
@@ -88,32 +85,29 @@ async function userLoginController(req, res) {
     if (!isValidPassword) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid email or password",
       });
     }
 
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "3d" }
-    );
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "3d",
+    });
 
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict"
+      sameSite: "strict",
     });
 
     res.status(200).json({
       success: true,
-      user
+      user,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 }
@@ -125,7 +119,7 @@ async function userLogoutController(req, res) {
     if (!token) {
       return res.status(200).json({
         success: true,
-        message: "User logged out successfully"
+        message: "User logged out successfully",
       });
     }
 
@@ -135,20 +129,15 @@ async function userLogoutController(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: "User logged out successfully"
+      message: "User logged out successfully",
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 }
 
-export {
-  userRegisterController,
-  userLoginController,
-  userLogoutController
-};
+export { userRegisterController, userLoginController, userLogoutController };

@@ -19,7 +19,7 @@ async function authMiddleware(req, res, next) {
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: "Unauthorized"
+      message: "Unauthorized",
     });
   }
 
@@ -28,38 +28,35 @@ async function authMiddleware(req, res, next) {
     if (isBlacklisted) {
       return res.status(401).json({
         success: false,
-        message: "Token is blacklisted"
+        message: "Token is blacklisted",
       });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await userModel
-      .findById(decoded.userId)
-      .select("-password");
+    const user = await userModel.findById(decoded.userId).select("-password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
     req.user = user;
     next();
-
   } catch (error) {
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
-        message: "Token expired"
+        message: "Token expired",
       });
     }
 
     console.error(error);
     return res.status(401).json({
       success: false,
-      message: "Invalid token"
+      message: "Invalid token",
     });
   }
 }
@@ -71,7 +68,7 @@ async function authSystemUserMiddleware(req, res, next) {
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: "Unauthorized"
+      message: "Unauthorized",
     });
   }
 
@@ -80,45 +77,42 @@ async function authSystemUserMiddleware(req, res, next) {
     if (isBlacklisted) {
       return res.status(401).json({
         success: false,
-        message: "Token is blacklisted"
+        message: "Token is blacklisted",
       });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await userModel
-      .findById(decoded.userId)
-      .select("+systemUser");
+    const user = await userModel.findById(decoded.userId).select("+systemUser");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
     if (!user.systemUser) {
       return res.status(403).json({
         success: false,
-        message: "Access denied"
+        message: "Access denied",
       });
     }
 
     req.user = user;
     next();
-
   } catch (error) {
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
-        message: "Token expired"
+        message: "Token expired",
       });
     }
 
     console.error(error);
     return res.status(401).json({
       success: false,
-      message: "Invalid token"
+      message: "Invalid token",
     });
   }
 }

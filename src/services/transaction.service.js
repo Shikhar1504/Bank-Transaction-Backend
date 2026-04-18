@@ -4,6 +4,7 @@ import accountModel from "../models/account.model.js";
 import auditLogModel from "../models/auditLog.model.js";
 import mongoose from "mongoose";
 import eventBus from "../events/eventBus.js";
+import idempotencyModel from "../models/idempotency.model.js";
 
 const MAX_PER_TXN = 10000;
 const MAX_RETRY = 3;
@@ -23,28 +24,35 @@ export async function processTransaction({
   let transaction;
 
   // ✅ Idempotency
-  const existing = await transactionModel.findOne({
-    idempotencyKey,
+  const existingKey = await idempotencyModel.findOne({
+    key: idempotencyKey,
     fromAccount,
   });
 
-  if (existing) {
-    if (existing.status === "COMPLETED") {
-      return existing;
+  if (existingKey) {
+    throw new Error("Duplicate request");
+  }
+
+  // ✅ Retry logic (separate from idempotency)
+  const existingFailed = await transactionModel
+    .findOne({
+      fromAccount,
+      toAccount,
+      amount,
+      status: "FAILED",
+      createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) },
+    })
+    .sort({ createdAt: -1 });
+
+  if (existingFailed) {
+    if (existingFailed.retryCount >= MAX_RETRY) {
+      throw new Error("Retry limit exceeded");
     }
 
-    if (existing.status === "FAILED") {
-      if (existing.retryCount >= MAX_RETRY) {
-        throw new Error("Retry limit exceeded");
-      }
-
-      transaction = existing;
-      transaction.status = "PROCESSING";
-      transaction.retryCount += 1;
-      await transaction.save();
-    } else {
-      return existing;
-    }
+    transaction = existingFailed;
+    transaction.status = "PROCESSING";
+    transaction.retryCount += 1;
+    await transaction.save();
   }
 
   // ✅ Create if not exists
@@ -121,6 +129,11 @@ export async function processTransaction({
     await session.commitTransaction();
     session.endSession();
 
+    await idempotencyModel.create({
+      key: idempotencyKey,
+      fromAccount,
+    });
+
     await auditLogModel.create({
       action: "TRANSFER_SUCCESS",
       status: "SUCCESS",
@@ -170,9 +183,6 @@ export async function processSystemTransaction({
   note,
   userId,
 }) {
-  const MAX_PER_TXN = 10000;
-  const MAX_RETRY = 3;
-
   if (amount > MAX_PER_TXN) {
     throw new Error("Amount exceeds per transaction limit");
   }
@@ -186,26 +196,34 @@ export async function processSystemTransaction({
   let transaction;
 
   // ✅ Idempotency
-  const existing = await transactionModel.findOne({
-    idempotencyKey,
+  const existingKey = await idempotencyModel.findOne({
+    key: idempotencyKey,
     fromAccount: systemAccount._id,
   });
 
-  if (existing) {
-    if (existing.status === "COMPLETED") return existing;
+  if (existingKey) {
+    throw new Error("Duplicate request");
+  }
 
-    if (existing.status === "FAILED") {
-      if (existing.retryCount >= MAX_RETRY) {
-        throw new Error("Retry limit exceeded");
-      }
+  const existingFailed = await transactionModel
+    .findOne({
+      fromAccount: systemAccount._id,
+      toAccount,
+      amount,
+      status: "FAILED",
+      createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) },
+    })
+    .sort({ createdAt: -1 });
 
-      transaction = existing;
-      transaction.status = "PROCESSING";
-      transaction.retryCount += 1;
-      await transaction.save();
-    } else {
-      return existing;
+  if (existingFailed) {
+    if (existingFailed.retryCount >= MAX_RETRY) {
+      throw new Error("Retry limit exceeded");
     }
+
+    transaction = existingFailed;
+    transaction.status = "PROCESSING";
+    transaction.retryCount += 1;
+    await transaction.save();
   }
 
   if (!transaction) {
@@ -273,6 +291,11 @@ export async function processSystemTransaction({
 
     await session.commitTransaction();
     session.endSession();
+
+    await idempotencyModel.create({
+      key: idempotencyKey,
+      fromAccount: systemAccount._id,
+    });
 
     await auditLogModel.create({
       action: "SYSTEM_TRANSFER_SUCCESS",
