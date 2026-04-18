@@ -1,34 +1,45 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
-const userSchema=new mongoose.Schema({
-  email:{
-    type:String,
-    required:[true,"Email is required"],
-    trim:true,
-    lowercase:true,
-    match:[/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, "Please enter a valid email address"],
-    unique:[true,"Email already exists"]
+const userSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      trim: true,
+      lowercase: true,
+      match: [
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+        "Please enter a valid email address",
+      ],
+      unique: [true, "Email already exists"],
+    },
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minLength: [6, "Password must be at least 6 characters long"],
+      select: false,
+    },
+    role: {
+      type: String,
+      enum: ["USER", "ADMIN"],
+      default: "USER",
+    },
+    systemUser: {
+      type: Boolean,
+      default: false,
+      immutable: true,
+      select: false,
+    },
   },
-  name:{
-    type:String,
-    required:[true,"Name is required"],
+  {
+    timestamps: true,
   },
-  password:{
-    type:String,
-    required:[true,"Password is required"],
-    minLength:[6,"Password must be at least 6 characters long"],
-    select:false
-  },
-  systemUser:{
-    type:Boolean,
-    default:false,
-    immutable:true,
-    select:false
-  }
-},{
-  timestamps:true
-})
+);
 
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
@@ -46,6 +57,6 @@ userSchema.methods.comparePassword = function (enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
 };
 
-const userModel=mongoose.model("user",userSchema);
+const userModel = mongoose.model("user", userSchema);
 
 export default userModel;

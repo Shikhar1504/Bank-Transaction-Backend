@@ -3,6 +3,7 @@ import ledgerModel from "../models/ledger.model.js";
 import accountModel from "../models/account.model.js";
 import auditLogModel from "../models/auditLog.model.js";
 import mongoose from "mongoose";
+import eventBus from "../events/eventBus.js";
 
 const MAX_PER_TXN = 10000;
 const MAX_RETRY = 3;
@@ -128,6 +129,11 @@ export async function processTransaction({
       details: "Transaction completed successfully",
     });
 
+    eventBus.emit("transaction.completed", {
+      transactionId: transaction._id,
+      userId,
+    });
+
     return transaction;
   } catch (error) {
     await session.abortTransaction();
@@ -140,6 +146,11 @@ export async function processTransaction({
         userId,
         transactionId: transaction._id,
         details: error.message,
+      });
+
+      eventBus.emit("transaction.failed", {
+        transactionId: transaction._id,
+        userId,
       });
 
       transaction.status = "FAILED";
@@ -271,6 +282,11 @@ export async function processSystemTransaction({
       details: "Initial funds transaction completed",
     });
 
+    eventBus.emit("transaction.completed", {
+      transactionId: transaction._id,
+      userId,
+    });
+
     return transaction;
   } catch (error) {
     await session.abortTransaction();
@@ -283,6 +299,11 @@ export async function processSystemTransaction({
         userId,
         transactionId: transaction._id,
         details: error.message,
+      });
+
+      eventBus.emit("transaction.failed", {
+        transactionId: transaction._id,
+        userId,
       });
 
       transaction.status = "FAILED";

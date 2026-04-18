@@ -1,6 +1,7 @@
 import app from "./src/app.js";
 import dotenv from "dotenv";
 import connectDB from "./src/config/db.js";
+import "./events/notification.handler.js";
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ process.on("unhandledRejection", (err) => {
 
 let server;
 
-async function startServer(){
+async function startServer() {
   try {
     await connectDB();
     const PORT = process.env.PORT || 3000;
@@ -24,7 +25,6 @@ async function startServer(){
     server = app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });
-
   } catch (error) {
     console.error("Error starting server:", error);
     process.exit(1);
